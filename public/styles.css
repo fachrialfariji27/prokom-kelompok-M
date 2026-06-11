@@ -338,6 +338,169 @@ body::before {
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+.facility-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.facility-card {
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.facility-card__head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.facility-card__eyebrow {
+  margin: 0 0 4px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 0.72rem;
+}
+
+.facility-card h4,
+.tracking-card h4,
+.admin-form h4 {
+  margin: 0;
+  color: var(--text);
+}
+
+.facility-card__address,
+.facility-card__meta,
+.tracking-card p,
+.tracking-meta,
+.event-item p {
+  color: var(--muted);
+}
+
+.facility-card__meta,
+.facility-card__actions,
+.tracking-summary,
+.tracking-meta,
+.admin-form-grid {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.facility-card__meta {
+  justify-content: space-between;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  margin-top: 10px;
+}
+
+.facility-card__actions {
+  margin-top: 14px;
+}
+
+.tracking-card {
+  padding: 12px 2px 0;
+}
+
+.tracking-summary > div {
+  flex: 1 1 180px;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.status-steps {
+  display: grid;
+  gap: 10px;
+}
+
+.status-step {
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.status-step.is-active {
+  background: rgba(25, 118, 210, 0.16);
+  color: var(--text);
+  border-color: rgba(25, 118, 210, 0.35);
+}
+
+.tracking-meta {
+  flex-direction: column;
+  font-size: 0.92rem;
+}
+
+.admin-form-grid {
+  align-items: stretch;
+}
+
+.admin-form {
+  flex: 1 1 240px;
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-form .form-control,
+.admin-form .form-select {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.admin-form .form-control::placeholder {
+  color: rgba(155, 176, 201, 0.8);
+}
+
+.map-pin {
+  display: grid;
+  place-items: center;
+  color: white;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.map-pin span {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.map-pin--user span {
+  background: linear-gradient(135deg, #1976d2, #63b3ff);
+  box-shadow: 0 0 0 10px rgba(25, 118, 210, 0.2);
+}
+
+.map-pin--hospital span {
+  background: linear-gradient(135deg, #e53935, #ff867c);
+  box-shadow: 0 0 0 10px rgba(229, 57, 53, 0.18);
+}
+
+.map-pin--clinic span {
+  background: linear-gradient(135deg, #2dd4a3, #8ef3d2);
+  color: #07211c;
+  box-shadow: 0 0 0 10px rgba(45, 212, 163, 0.18);
+}
+
+.map-pin--ambulance span {
+  background: linear-gradient(135deg, #f5c451, #ffd98a);
+  color: #241900;
+  box-shadow: 0 0 0 10px rgba(245, 196, 81, 0.18);
+}
+
 .event-feed,
 .traffic-list {
   display: flex;

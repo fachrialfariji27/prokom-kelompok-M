@@ -1,215 +1,289 @@
-const defaultIncidentLocation = {
-  lat: -6.21462,
-  lng: 106.84513
+const defaultUserLocation = {
+  lat: -6.9667,
+  lng: 110.4167
 };
+
+function createAmbulanceTrack(id, name, driver, number, origin, destination, status, availableAtHospital = null) {
+  return {
+    id,
+    name,
+    driver,
+    number,
+    status,
+    availableAtHospital,
+    location: origin,
+    target: destination,
+    etaMinutes: 0,
+    distanceKm: 0,
+    speedKmh: 48,
+    battery: 90,
+    lastSeen: new Date().toISOString(),
+    assignmentId: null
+  };
+}
 
 function baseState() {
   return {
-    traffic: [
-      { id: 't1', name: 'Koridor Sudirman', congestion: 1.1, baseSpeed: 45, speedKmh: 40 },
-      { id: 't2', name: 'Koridor Thamrin', congestion: 1.3, baseSpeed: 42, speedKmh: 32 },
-      { id: 't3', name: 'Koridor Gatot Subroto', congestion: 0.9, baseSpeed: 48, speedKmh: 52 },
-      { id: 't4', name: 'Koridor Senen', congestion: 1.5, baseSpeed: 38, speedKmh: 25 }
-    ],
-    ambulances: [
-      {
-        id: 'AMB-001',
-        name: 'Ambulans Alpha',
-        driver: 'Rizky Maulana',
-        status: 'Tersedia',
-        location: { lat: -6.2088, lng: 106.8454 },
-        battery: 92,
-        lastSeen: new Date().toISOString(),
-        currentAssignment: null
-      },
-      {
-        id: 'AMB-002',
-        name: 'Ambulans Bravo',
-        driver: 'Dian Pratama',
-        status: 'Menuju Pasien',
-        location: { lat: -6.1982, lng: 106.8396 },
-        battery: 81,
-        lastSeen: new Date().toISOString(),
-        currentAssignment: 'INC-001'
-      },
-      {
-        id: 'AMB-003',
-        name: 'Ambulans Charlie',
-        driver: 'Siti Aisyah',
-        status: 'Mengangkut Pasien',
-        location: { lat: -6.2241, lng: 106.8325 },
-        battery: 74,
-        lastSeen: new Date().toISOString(),
-        currentAssignment: 'INC-002'
-      },
-      {
-        id: 'AMB-004',
-        name: 'Ambulans Delta',
-        driver: 'Bima Saputra',
-        status: 'Tiba di Rumah Sakit',
-        location: { lat: -6.1873, lng: 106.8408 },
-        battery: 68,
-        lastSeen: new Date().toISOString(),
-        currentAssignment: 'INC-003'
-      },
-      {
-        id: 'AMB-005',
-        name: 'Ambulans Echo',
-        driver: 'Nadia Putri',
-        status: 'Offline',
-        location: { lat: -6.2403, lng: 106.8202 },
-        battery: 55,
-        lastSeen: new Date().toISOString(),
-        currentAssignment: null
-      }
-    ],
+    userLocation: defaultUserLocation,
     hospitals: [
       {
-        id: 'RS-001',
-        name: 'RSUD Central Care',
-        location: { lat: -6.1892, lng: 106.8461 },
-        phone: '+62 21 555 0180',
-        igdBedsAvailable: 7,
-        doctorsOnDuty: 4,
-        icuAvailable: true,
-        totalBeds: 18,
+        id: 'RS-SMG-001',
+        name: 'RSUP Dr. Kariadi',
+        address: 'Jl. Dr. Sutomo No.16, Randusari, Kec. Semarang Sel., Kota Semarang',
+        phone: '(024) 8413476',
+        location: { lat: -6.9875, lng: 110.4092 },
+        ambulancesAvailable: 4,
+        active: true,
+        type: 'Rumah Sakit',
         receivingPatients: true,
-        specialties: ['Trauma', 'Kardiologi', 'Umum']
+        distanceKm: 0,
+        specialties: ['Trauma', 'Kardiologi', 'ICU', 'Stroke']
       },
       {
-        id: 'RS-002',
-        name: 'Rumah Sakit Sehat Sentosa',
-        location: { lat: -6.2324, lng: 106.8415 },
-        phone: '+62 21 555 0181',
-        igdBedsAvailable: 2,
-        doctorsOnDuty: 2,
-        icuAvailable: false,
-        totalBeds: 12,
+        id: 'RS-SMG-002',
+        name: 'RSUP Dr. Kariadi - IGD Timur',
+        address: 'Jl. Dr. Sutomo No.18, Randusari, Kec. Semarang Sel.',
+        phone: '(024) 8310067',
+        location: { lat: -6.9862, lng: 110.4071 },
+        ambulancesAvailable: 2,
+        active: true,
+        type: 'Rumah Sakit',
         receivingPatients: true,
-        specialties: ['Anak', 'Umum']
+        distanceKm: 0,
+        specialties: ['IGD', 'Bedah', 'Umum']
       },
       {
-        id: 'RS-003',
-        name: 'RS Metro Emergency Center',
-        location: { lat: -6.2003, lng: 106.8561 },
-        phone: '+62 21 555 0182',
-        igdBedsAvailable: 0,
-        doctorsOnDuty: 3,
-        icuAvailable: true,
-        totalBeds: 14,
+        id: 'RS-SMG-003',
+        name: 'RSUD KRMT Wongsonegoro',
+        address: 'Jl. Fatmawati Raya, Mangunharjo, Tembalang, Kota Semarang',
+        phone: '(024) 6711500',
+        location: { lat: -7.0212, lng: 110.4518 },
+        ambulancesAvailable: 3,
+        active: true,
+        type: 'Rumah Sakit',
+        receivingPatients: true,
+        distanceKm: 0,
+        specialties: ['Trauma', 'Obgyn', 'Anak']
+      },
+      {
+        id: 'RS-SMG-004',
+        name: 'RS Telogorejo',
+        address: 'Jl. KH Ahmad Dahlan No.18, Pekunden, Semarang Tengah, Kota Semarang',
+        phone: '(024) 86466000',
+        location: { lat: -6.9948, lng: 110.4179 },
+        ambulancesAvailable: 2,
+        active: true,
+        type: 'Rumah Sakit',
+        receivingPatients: true,
+        distanceKm: 0,
+        specialties: ['Kardiologi', 'Stroke', 'ICU']
+      },
+      {
+        id: 'RS-SMG-005',
+        name: 'RS Columbia Asia Semarang',
+        address: 'Jl. Siliwangi No.143, Kalibanteng Kulon, Semarang Barat, Kota Semarang',
+        phone: '(024) 76633333',
+        location: { lat: -6.9889, lng: 110.3948 },
+        ambulancesAvailable: 1,
+        active: true,
+        type: 'Rumah Sakit',
+        receivingPatients: true,
+        distanceKm: 0,
+        specialties: ['Umum', 'ICU']
+      },
+      {
+        id: 'RS-SMG-006',
+        name: 'RS Islam Sultan Agung',
+        address: 'Jl. Raya Kaligawe KM.4, Terboyo Kulon, Genuk, Kota Semarang',
+        phone: '(024) 6580019',
+        location: { lat: -6.9869, lng: 110.4589 },
+        ambulancesAvailable: 0,
+        active: true,
+        type: 'Rumah Sakit',
         receivingPatients: false,
-        specialties: ['Trauma', 'Bedah', 'ICU']
-      },
-      {
-        id: 'RS-004',
-        name: 'RS Bina Medika',
-        location: { lat: -6.2185, lng: 106.8288 },
-        phone: '+62 21 555 0183',
-        igdBedsAvailable: 5,
-        doctorsOnDuty: 5,
-        icuAvailable: true,
-        totalBeds: 20,
-        receivingPatients: true,
-        specialties: ['Kardiologi', 'Obgyn', 'Umum']
-      },
-      {
-        id: 'RS-005',
-        name: 'RS Harapan Ibu',
-        location: { lat: -6.1734, lng: 106.8331 },
-        phone: '+62 21 555 0184',
-        igdBedsAvailable: 3,
-        doctorsOnDuty: 2,
-        icuAvailable: false,
-        totalBeds: 10,
-        receivingPatients: true,
-        specialties: ['Obgyn', 'Anak']
+        distanceKm: 0,
+        specialties: ['Obgyn', 'Trauma', 'Anak']
       }
     ],
-    incidents: [],
+    clinics: [
+      {
+        id: 'KL-SMG-001',
+        name: 'Klinik Utama Semarang Sehat',
+        address: 'Jl. Pandanaran No.56, Pekunden, Semarang Tengah, Kota Semarang',
+        phone: '(024) 7641111',
+        location: { lat: -6.9927, lng: 110.4182 },
+        ambulancesAvailable: 1,
+        active: true,
+        type: 'Klinik',
+        receivingPatients: true,
+        distanceKm: 0,
+        specialties: ['Umum', 'Gawat Darurat Ringan']
+      },
+      {
+        id: 'KL-SMG-002',
+        name: 'Klinik Medika Tugu Muda',
+        address: 'Jl. Pahlawan No.127, Semarang Barat, Kota Semarang',
+        phone: '(024) 7602222',
+        location: { lat: -6.9849, lng: 110.4057 },
+        ambulancesAvailable: 0,
+        active: true,
+        type: 'Klinik',
+        receivingPatients: true,
+        distanceKm: 0,
+        specialties: ['Umum', 'Rawat Jalan']
+      },
+      {
+        id: 'KL-SMG-003',
+        name: 'Klinik Keluarga Banyumanik',
+        address: 'Jl. Setiabudi No.88, Banyumanik, Kota Semarang',
+        phone: '(024) 7468888',
+        location: { lat: -7.0497, lng: 110.4312 },
+        ambulancesAvailable: 1,
+        active: true,
+        type: 'Klinik',
+        receivingPatients: true,
+        distanceKm: 0,
+        specialties: ['Umum', 'Anak']
+      },
+      {
+        id: 'KL-SMG-004',
+        name: 'Klinik Siaga Kalibanteng',
+        address: 'Jl. Abdulrahman Saleh No.21, Kalibanteng Kulon, Semarang Barat, Kota Semarang',
+        phone: '(024) 7604444',
+        location: { lat: -6.9728, lng: 110.3849 },
+        ambulancesAvailable: 0,
+        active: true,
+        type: 'Klinik',
+        receivingPatients: true,
+        distanceKm: 0,
+        specialties: ['Umum']
+      },
+      {
+        id: 'KL-SMG-005',
+        name: 'Klinik Pratama Genuk',
+        address: 'Jl. Raya Genuk No.45, Genuk, Kota Semarang',
+        phone: '(024) 6582222',
+        location: { lat: -6.9781, lng: 110.4658 },
+        ambulancesAvailable: 0,
+        active: false,
+        type: 'Klinik',
+        receivingPatients: false,
+        distanceKm: 0,
+        specialties: ['Umum']
+      }
+    ],
+    ambulances: [
+      createAmbulanceTrack('AMB-SMG-001', 'Ambulans Kariadi 01', 'Budi Santoso', 'SMG 1101', { lat: -6.9875, lng: 110.4092 }, defaultUserLocation, 'Siaga di RSUP Dr. Kariadi', 'RSUP Dr. Kariadi'),
+      createAmbulanceTrack('AMB-SMG-002', 'Ambulans Telogorejo 02', 'Rina Lestari', 'SMG 1102', { lat: -6.9948, lng: 110.4179 }, defaultUserLocation, 'Menuju Lokasi', 'RS Telogorejo'),
+      createAmbulanceTrack('AMB-SMG-003', 'Ambulans Wongsonegoro 03', 'Agus Prabowo', 'SMG 1103', { lat: -7.0212, lng: 110.4518 }, defaultUserLocation, 'Tersedia', 'RSUD KRMT Wongsonegoro'),
+      createAmbulanceTrack('AMB-SMG-004', 'Ambulans Sehat 04', 'Siti Aminah', 'SMG 1104', { lat: -6.9927, lng: 110.4182 }, defaultUserLocation, 'Mengantar Pasien', 'Klinik Utama Semarang Sehat'),
+      createAmbulanceTrack('AMB-SMG-005', 'Ambulans Siaga 05', 'Dewi Puspita', 'SMG 1105', { lat: -6.9889, lng: 110.3948 }, defaultUserLocation, 'Offline', 'RS Columbia Asia Semarang')
+    ],
+    bookings: [],
+    trackingSessions: [],
     events: [
       {
         id: 'evt-001',
-        type: 'dispatch',
-        title: 'Ambulans Bravo diberangkatkan',
-        detail: 'Menuju pasien dengan estimasi tiba 8 menit',
+        type: 'notifikasi',
+        title: 'Sistem SIGAP Ambulans Semarang aktif',
+        detail: 'Memantau rumah sakit, klinik, dan ambulans di Kota Semarang.',
         timestamp: new Date().toISOString()
       },
       {
         id: 'evt-002',
-        type: 'hospital',
-        title: 'RS Metro Emergency Center penuh',
-        detail: 'Sistem menandai status tidak menerima pasien',
+        type: 'peta',
+        title: 'Peta interaktif siap digunakan',
+        detail: 'Pengguna dapat mengaktifkan GPS dan memilih fasilitas terdekat.',
         timestamp: new Date().toISOString()
       },
       {
         id: 'evt-003',
-        type: 'routing',
-        title: 'Rerouting aktif di Sudirman',
-        detail: 'Lalu lintas meningkat, rute dialihkan otomatis',
+        type: 'admin',
+        title: 'Dashboard admin siap',
+        detail: 'Admin dapat memperbarui data rumah sakit, klinik, dan ambulans.',
         timestamp: new Date().toISOString()
       }
     ],
-    dispatchSummary: {
-      totalCases: 128,
-      activeCases: 4,
-      lastAssignedHospital: 'RSUD Central Care'
+    analytics: {
+      totalBookings: 24,
+      averageEta: 11.4,
+      fastestResponse: 7,
+      activeVehicles: 4,
+      successRate: 92,
+      topHospital: 'RSUP Dr. Kariadi',
+      topClinic: 'Klinik Utama Semarang Sehat'
     }
   };
 }
 
-const initialIncidents = [
+const initialBookings = [
   {
-    id: 'INC-001',
-    createdAt: new Date().toISOString(),
-    area: 'Menteng',
-    caseType: 'cardiac',
+    id: 'BK-001',
     patientName: 'Andi Saputra',
-    responseTimeMinutes: 9,
-    hospitalName: 'RSUD Central Care',
-    ambulanceId: 'AMB-002',
-    metTarget: true
+    phone: '081234567891',
+    bookingTime: new Date().toISOString(),
+    destinationName: 'RSUP Dr. Kariadi',
+    ambulanceName: 'Ambulans Kariadi 01',
+    driverName: 'Budi Santoso',
+    etaMinutes: 9,
+    durationMinutes: 18,
+    status: 'Ambulans menuju lokasi',
+    pickupLocation: 'Jl. Pemuda, Semarang Tengah',
+    condition: 'Sesak napas'
   },
   {
-    id: 'INC-002',
-    createdAt: new Date().toISOString(),
-    area: 'Senen',
-    caseType: 'trauma',
+    id: 'BK-002',
     patientName: 'Maya Lestari',
-    responseTimeMinutes: 11,
-    hospitalName: 'RS Bina Medika',
-    ambulanceId: 'AMB-003',
-    metTarget: true
-  },
-  {
-    id: 'INC-003',
-    createdAt: new Date().toISOString(),
-    area: 'Tanah Abang',
-    caseType: 'general',
-    patientName: 'Budi Santoso',
-    responseTimeMinutes: 15,
-    hospitalName: 'RSUD Central Care',
-    ambulanceId: 'AMB-004',
-    metTarget: false
-  },
-  {
-    id: 'INC-004',
-    createdAt: new Date().toISOString(),
-    area: 'Kuningan',
-    caseType: 'pediatric',
-    patientName: 'Nina Kirana',
-    responseTimeMinutes: 10,
-    hospitalName: 'Rumah Sakit Sehat Sentosa',
-    ambulanceId: 'AMB-001',
-    metTarget: true
+    phone: '081234567892',
+    bookingTime: new Date().toISOString(),
+    destinationName: 'RS Telogorejo',
+    ambulanceName: 'Ambulans Telogorejo 02',
+    driverName: 'Rina Lestari',
+    etaMinutes: 12,
+    durationMinutes: 22,
+    status: 'Pasien dalam penanganan',
+    pickupLocation: 'Jl. Pandanaran, Semarang',
+    condition: 'Kecelakaan lalu lintas'
   }
 ];
 
-module.exports = {
-  defaultIncidentLocation,
-  initialIncidents,
-  createInitialState() {
-    const state = baseState();
-    state.incidents = initialIncidents.map((incident) => ({ ...incident }));
-    return state;
+const trackingTemplates = [
+  {
+    stage: 'Permintaan diterima',
+    etaMinutes: 12,
+    positionOffset: 0.001
+  },
+  {
+    stage: 'Ambulans sedang disiapkan',
+    etaMinutes: 10,
+    positionOffset: 0.003
+  },
+  {
+    stage: 'Ambulans menuju lokasi',
+    etaMinutes: 7,
+    positionOffset: 0.006
+  },
+  {
+    stage: 'Ambulans telah tiba',
+    etaMinutes: 1,
+    positionOffset: 0.008
+  },
+  {
+    stage: 'Pasien dalam penanganan',
+    etaMinutes: 0,
+    positionOffset: 0.008
   }
+];
+
+function createInitialState() {
+  const state = baseState();
+  state.bookings = initialBookings.map((booking) => ({ ...booking }));
+  state.trackingSessions = [];
+  return state;
+}
+
+module.exports = {
+  defaultUserLocation,
+  trackingTemplates,
+  createInitialState
 };

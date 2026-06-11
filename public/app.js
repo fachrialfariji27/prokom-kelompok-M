@@ -1,7 +1,6 @@
 const socket = io();
-const map = L.map('map', { zoomControl: true }).setView([-6.2, 106.84], 12);
-
-const isDarkTheme = () => document.documentElement.dataset.theme !== 'light';
+const bookingModal = new bootstrap.Modal(document.getElementById('bookingModal'));
+const map = L.map('map', { zoomControl: true }).setView([-6.99, 110.42], 12);
 
 const tileLayers = {
   dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -14,32 +13,45 @@ const tileLayers = {
 
 tileLayers.dark.addTo(map);
 
-const ambulanceLayer = L.layerGroup().addTo(map);
-const hospitalLayer = L.layerGroup().addTo(map);
-const routeLayer = L.layerGroup().addTo(map);
+const layers = {
+  user: L.layerGroup().addTo(map),
+  hospitals: L.layerGroup().addTo(map),
+  clinics: L.layerGroup().addTo(map),
+  ambulances: L.layerGroup().addTo(map),
+  routes: L.layerGroup().addTo(map)
+};
 
-let dashboard = null;
-let responseChart = null;
-let volumeChart = null;
+const state = {
+  dashboard: null,
+  facilities: { hospitals: [], clinics: [] },
+  userLocation: null,
+  selectedFacility: null,
+  bookingChart: null,
+  etaChart: null,
+  activeTrackingId: null
+};
 
 const elements = {
   lastUpdated: document.getElementById('lastUpdated'),
   statActiveCases: document.getElementById('statActiveCases'),
-  statAverageResponse: document.getElementById('statAverageResponse'),
-  statHospitalsReceiving: document.getElementById('statHospitalsReceiving'),
+  statAverageEta: document.getElementById('statAverageEta'),
+  statFacilities: document.getElementById('statFacilities'),
   statSuccessRate: document.getElementById('statSuccessRate'),
-  recommendedAmbulance: document.getElementById('recommendedAmbulance'),
-  recommendedAmbulanceMeta: document.getElementById('recommendedAmbulanceMeta'),
-  recommendedHospital: document.getElementById('recommendedHospital'),
-  recommendedHospitalMeta: document.getElementById('recommendedHospitalMeta'),
-  recommendedEta: document.getElementById('recommendedEta'),
-  recommendedRoute: document.getElementById('recommendedRoute'),
-  ambulanceTable: document.getElementById('ambulanceTable'),
-  hospitalTable: document.getElementById('hospitalTable'),
-  trafficList: document.getElementById('trafficList'),
+  hospitalCards: document.getElementById('hospitalCards'),
+  clinicCards: document.getElementById('clinicCards'),
+  trackingCard: document.getElementById('trackingCard'),
+  bookingTable: document.getElementById('bookingTable'),
+  ambulanceAdminTable: document.getElementById('ambulanceAdminTable'),
+  facilityAdminTable: document.getElementById('facilityAdminTable'),
   eventFeed: document.getElementById('eventFeed'),
-  dispatchDemoBtn: document.getElementById('dispatchDemoBtn'),
-  themeToggle: document.getElementById('themeToggle')
+  gpsBtn: document.getElementById('gpsBtn'),
+  bukaFormBtn: document.getElementById('bukaFormBtn'),
+  themeToggle: document.getElementById('themeToggle'),
+  bookingTargetLabel: document.getElementById('bookingTargetLabel'),
+  bookingForm: document.getElementById('bookingForm'),
+  formRumahSakit: document.getElementById('formRumahSakit'),
+  formKlinik: document.getElementById('formKlinik'),
+  formAmbulans: document.getElementById('formAmbulans')
 };
 
 function formatTime(value) {
@@ -50,308 +62,670 @@ function formatTime(value) {
   }).format(new Date(value));
 }
 
-function badgeClassForStatus(status) {
-  if (status.includes('Tersedia') || status.includes('Menerima')) return 'badge-soft badge-soft--success';
-  if (status.includes('Menuju') || status.includes('Tiba')) return 'badge-soft badge-soft--primary';
-  if (status.includes('Penuh') || status.includes('Offline')) return 'badge-soft badge-soft--danger';
-  return 'badge-soft badge-soft--warning';
+function formatDateTime(value) {
+  return new Intl.DateTimeFormat('id-ID', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  }).format(new Date(value));
 }
 
-function iconColor(status) {
-  if (status === 'Tersedia') return '#2dd4a3';
-  if (status === 'Menuju Pasien') return '#0f62fe';
-  if (status === 'Mengangkut Pasien') return '#f5c451';
-  if (status === 'Tiba di Rumah Sakit') return '#ff4d5e';
-  return '#7f8ea5';
+function facilityBadgeClass(facility) {
+  if (!facility.active) return 'badge-soft badge-soft--danger';
+  if (facility.receivingPatients === false || facility.ambulancesAvailable === 0) return 'badge-soft badge-soft--warning';
+  return 'badge-soft badge-soft--success';
 }
 
-function clearLayers(layer) {
-  layer.clearLayers();
+function bookingBadgeClass(status) {
+  if (status === 'Siaga di RS' || status === 'Tersedia') return 'badge-soft badge-soft--success';
+  if (status === 'Pasien dalam penanganan') return 'badge-soft badge-soft--success';
+  if (status === 'Ambulans telah tiba') return 'badge-soft badge-soft--primary';
+  if (status === 'Ambulans menuju lokasi' || status === 'Ambulans sedang disiapkan') return 'badge-soft badge-soft--warning';
+  return 'badge-soft badge-soft--danger';
 }
 
-function drawMap(dashboardData) {
-  clearLayers(ambulanceLayer);
-  clearLayers(hospitalLayer);
-  clearLayers(routeLayer);
+function trafficColor(value) {
+  if (value >= 1.8) return '#ff4d5e';
+  if (value >= 1.2) return '#f5c451';
+  return '#2dd4a3';
+}
 
-  dashboardData.ambulances.forEach((ambulance) => {
-    const marker = L.circleMarker([ambulance.location.lat, ambulance.location.lng], {
-      radius: 10,
-      color: iconColor(ambulance.status),
-      fillColor: iconColor(ambulance.status),
-      fillOpacity: 0.9,
-      weight: 2
+function userMarkerIcon() {
+  return L.divIcon({
+    className: 'map-pin map-pin--user',
+    html: '<span>Anda</span>',
+    iconSize: [58, 58],
+    iconAnchor: [29, 58]
+  });
+}
+
+function hospitalMarkerIcon() {
+  return L.divIcon({
+    className: 'map-pin map-pin--hospital',
+    html: '<span>RS</span>',
+    iconSize: [46, 46],
+    iconAnchor: [23, 46]
+  });
+}
+
+function clinicMarkerIcon() {
+  return L.divIcon({
+    className: 'map-pin map-pin--clinic',
+    html: '<span>KL</span>',
+    iconSize: [46, 46],
+    iconAnchor: [23, 46]
+  });
+}
+
+function ambulanceMarkerIcon() {
+  return L.divIcon({
+    className: 'map-pin map-pin--ambulance',
+    html: '<span>AMB</span>',
+    iconSize: [50, 50],
+    iconAnchor: [25, 50]
+  });
+}
+
+function clearLayers() {
+  Object.values(layers).forEach((layer) => layer.clearLayers());
+}
+
+function facilityDistanceText(facility) {
+  return `${facility.distanceKm.toFixed(1)} km`;
+}
+
+function buildFacilityCard(facility) {
+  const statusLabel = facility.active ? 'Aktif' : 'Nonaktif';
+  const availableLabel = `${facility.ambulancesAvailable} ambulans tersedia`;
+  const actionLabel = facility.ambulancesAvailable > 0 && facility.active ? 'Pesan Ambulans' : 'Lihat Detail';
+
+  return `
+    <article class="facility-card">
+      <div class="facility-card__head">
+        <div>
+          <p class="facility-card__eyebrow">${facility.type}</p>
+          <h4>${facility.name}</h4>
+        </div>
+        <span class="${facilityBadgeClass(facility)}">${statusLabel}</span>
+      </div>
+      <p class="facility-card__address">${facility.address}</p>
+      <div class="facility-card__meta">
+        <span>${facility.phone}</span>
+        <span>${facilityDistanceText(facility)}</span>
+      </div>
+      <div class="facility-card__meta">
+        <span>${availableLabel}</span>
+        <span>${facility.receivingPatients ? 'Menerima pasien' : 'Penuh'}</span>
+      </div>
+      <div class="facility-card__actions">
+        <button class="btn btn-danger btn-sm" data-facility-book="${facility.id}">${actionLabel}</button>
+        <button class="btn btn-outline-light btn-sm" data-facility-focus="${facility.id}">Lihat di Peta</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderFacilities() {
+  const hospitals = [...state.facilities.hospitals].sort((a, b) => a.distanceKm - b.distanceKm || b.ambulancesAvailable - a.ambulancesAvailable);
+  const clinics = [...state.facilities.clinics].sort((a, b) => a.distanceKm - b.distanceKm || b.ambulancesAvailable - a.ambulancesAvailable);
+
+  elements.hospitalCards.innerHTML = hospitals.map(buildFacilityCard).join('');
+  elements.clinicCards.innerHTML = clinics.map(buildFacilityCard).join('');
+
+  document.querySelectorAll('[data-facility-book]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const facility = findFacility(button.dataset.facilityBook);
+      openBookingModal(facility);
     });
-
-    marker.bindPopup(`
-      <strong>${ambulance.name}</strong><br />
-      Status: ${ambulance.status}<br />
-      Driver: ${ambulance.driver}<br />
-      Battery: ${ambulance.battery}%
-    `);
-
-    marker.addTo(ambulanceLayer);
   });
 
-  dashboardData.hospitals.forEach((hospital) => {
-    const marker = L.marker([hospital.location.lat, hospital.location.lng]);
-    marker.bindPopup(`
-      <strong>${hospital.name}</strong><br />
-      IGD beds: ${hospital.igdBedsAvailable}<br />
-      Doctors on duty: ${hospital.doctorsOnDuty}<br />
-      Status: ${hospital.receivingPatients ? 'Menerima pasien' : 'Penuh'}
-    `);
-    marker.addTo(hospitalLayer);
+  document.querySelectorAll('[data-facility-focus]').forEach((button) => {
+    button.addEventListener('click', () => {
+      const facility = findFacility(button.dataset.facilityFocus);
+      if (facility) {
+        map.setView([facility.location.lat, facility.location.lng], 15);
+      }
+    });
+  });
+}
+
+function findFacility(id) {
+  return state.facilities.hospitals.find((item) => item.id === id)
+    || state.facilities.clinics.find((item) => item.id === id);
+}
+
+function renderMap() {
+  clearLayers();
+
+  const userLocation = state.userLocation || state.dashboard?.userLocation || { lat: -6.99, lng: 110.42 };
+  L.marker([userLocation.lat, userLocation.lng], { icon: userMarkerIcon() })
+    .bindPopup('Lokasi Anda')
+    .addTo(layers.user);
+
+  state.facilities.hospitals.forEach((facility) => {
+    L.marker([facility.location.lat, facility.location.lng], { icon: hospitalMarkerIcon() })
+      .bindPopup(`
+        <strong>${facility.name}</strong><br />
+        ${facility.address}<br />
+        ${facility.phone}<br />
+        Jarak: ${facilityDistanceText(facility)}
+      `)
+      .addTo(layers.hospitals);
   });
 
-  if (dashboardData.dispatchSummary?.lastRoute) {
-    L.polyline(dashboardData.dispatchSummary.lastRoute, {
-      color: '#ff4d5e',
+  state.facilities.clinics.forEach((facility) => {
+    L.marker([facility.location.lat, facility.location.lng], { icon: clinicMarkerIcon() })
+      .bindPopup(`
+        <strong>${facility.name}</strong><br />
+        ${facility.address}<br />
+        ${facility.phone}<br />
+        Jarak: ${facilityDistanceText(facility)}
+      `)
+      .addTo(layers.clinics);
+  });
+
+  state.dashboard?.ambulances.forEach((ambulance) => {
+    L.marker([ambulance.location.lat, ambulance.location.lng], { icon: ambulanceMarkerIcon() })
+      .bindPopup(`
+        <strong>${ambulance.name}</strong><br />
+        Sopir: ${ambulance.driver}<br />
+        Nomor: ${ambulance.number || '-'}<br />
+        Status: ${ambulance.status}
+      `)
+      .addTo(layers.ambulances);
+  });
+
+  const tracking = getCurrentTracking();
+  if (tracking) {
+    L.polyline(tracking.routeToUser || [], {
+      color: '#1976D2',
       weight: 5,
-      opacity: 0.85
-    }).addTo(routeLayer);
+      opacity: 0.9,
+      dashArray: '8,8'
+    }).addTo(layers.routes);
+
+    L.polyline(tracking.routeToDestination || [], {
+      color: '#E53935',
+      weight: 5,
+      opacity: 0.9
+    }).addTo(layers.routes);
   }
 }
 
-function renderAnalytics(analytics) {
-  const responseCtx = document.getElementById('responseChart');
-  const volumeCtx = document.getElementById('volumeChart');
+function getCurrentTracking() {
+  const fromSessions = state.dashboard?.trackingSessions || [];
+  return fromSessions[0] || state.dashboard?.bookings?.[0] || null;
+}
 
-  if (responseChart) {
-    responseChart.destroy();
-  }
+function renderStats() {
+  const dashboard = state.dashboard;
+  if (!dashboard) return;
 
-  if (volumeChart) {
-    volumeChart.destroy();
-  }
+  elements.statActiveCases.textContent = dashboard.dispatchSummary?.activeCases ?? 0;
+  elements.statAverageEta.textContent = `${dashboard.analytics.averageEta}m`;
+  elements.statFacilities.textContent = dashboard.hospitals.filter((item) => item.active).length + dashboard.clinics.filter((item) => item.active).length;
+  elements.statSuccessRate.textContent = `${dashboard.analytics.successRate}%`;
+  elements.lastUpdated.textContent = `Diperbarui ${formatTime(dashboard.updatedAt)}`;
+}
 
-  responseChart = new Chart(responseCtx, {
-    type: 'line',
-    data: {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-      datasets: [{
-        label: 'Response time (min)',
-        data: analytics.responseTrend,
-        tension: 0.35,
-        borderColor: '#0f62fe',
-        backgroundColor: 'rgba(15, 98, 254, 0.18)',
-        fill: true
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--text') } }
-      },
-      scales: {
-        x: {
-          ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--muted') },
-          grid: { color: 'rgba(255,255,255,0.05)' }
-        },
-        y: {
-          ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--muted') },
-          grid: { color: 'rgba(255,255,255,0.05)' }
-        }
-      }
-    }
-  });
+function renderEvents() {
+  const events = state.dashboard?.events || [];
+  elements.eventFeed.innerHTML = events.map((event) => `
+    <div class="event-item">
+      <h4>${event.title}</h4>
+      <div class="event-meta">${event.type.toUpperCase()} · ${formatTime(event.timestamp)}</div>
+      <p>${event.detail}</p>
+    </div>
+  `).join('');
+}
 
-  volumeChart = new Chart(volumeCtx, {
+function renderCharts() {
+  if (!state.dashboard) return;
+
+  const bookingCtx = document.getElementById('bookingChart');
+  const etaCtx = document.getElementById('etaChart');
+
+  if (state.bookingChart) state.bookingChart.destroy();
+  if (state.etaChart) state.etaChart.destroy();
+
+  const textColor = getComputedStyle(document.documentElement).getPropertyValue('--text');
+  const mutedColor = getComputedStyle(document.documentElement).getPropertyValue('--muted');
+
+  state.bookingChart = new Chart(bookingCtx, {
     type: 'bar',
     data: {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
       datasets: [
         {
-          label: 'Cases',
-          data: analytics.monthlyCases,
-          backgroundColor: 'rgba(255, 77, 94, 0.72)'
+          label: 'Pemesanan',
+          data: state.dashboard.analytics.casesPerMonth,
+          backgroundColor: 'rgba(25, 118, 210, 0.8)'
         },
         {
-          label: 'Target success (%)',
-          data: analytics.targetTrend,
-          backgroundColor: 'rgba(45, 212, 163, 0.72)'
+          label: 'Target keberhasilan',
+          data: state.dashboard.analytics.successTrend,
+          backgroundColor: 'rgba(229, 57, 53, 0.8)'
         }
       ]
     },
     options: {
       responsive: true,
-      plugins: {
-        legend: { labels: { color: getComputedStyle(document.documentElement).getPropertyValue('--text') } }
-      },
+      plugins: { legend: { labels: { color: textColor } } },
       scales: {
-        x: {
-          ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--muted') },
-          grid: { color: 'rgba(255,255,255,0.05)' }
+        x: { ticks: { color: mutedColor }, grid: { color: 'rgba(255,255,255,0.06)' } },
+        y: { ticks: { color: mutedColor }, grid: { color: 'rgba(255,255,255,0.06)' } }
+      }
+    }
+  });
+
+  state.etaChart = new Chart(etaCtx, {
+    type: 'line',
+    data: {
+      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun'],
+      datasets: [
+        {
+          label: 'ETA rata-rata',
+          data: [14, 13, 12, 11, 10, state.dashboard.analytics.averageEta],
+          borderColor: '#1976D2',
+          backgroundColor: 'rgba(25, 118, 210, 0.15)',
+          fill: true,
+          tension: 0.35
         },
-        y: {
-          ticks: { color: getComputedStyle(document.documentElement).getPropertyValue('--muted') },
-          grid: { color: 'rgba(255,255,255,0.05)' }
+        {
+          label: 'Respons tercepat',
+          data: [11, 10, 10, 9, 8, state.dashboard.analytics.fastestResponse],
+          borderColor: '#E53935',
+          backgroundColor: 'rgba(229, 57, 53, 0.15)',
+          fill: true,
+          tension: 0.35
         }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: textColor } } },
+      scales: {
+        x: { ticks: { color: mutedColor }, grid: { color: 'rgba(255,255,255,0.06)' } },
+        y: { ticks: { color: mutedColor }, grid: { color: 'rgba(255,255,255,0.06)' } }
       }
     }
   });
 }
 
-function renderTraffic(traffic) {
-  elements.trafficList.innerHTML = traffic
-    .map(
-      (item) => `
-        <div class="traffic-item">
-          <h4>${item.name}</h4>
-          <div class="traffic-meta">Congestion ${item.congestion.toFixed(2)}x</div>
-          <p>Speed ${item.speedKmh} km/h · Base ${item.baseSpeed} km/h</p>
-        </div>
-      `
-    )
-    .join('');
+function renderBookings() {
+  const bookings = state.dashboard?.bookings || [];
+  elements.bookingTable.innerHTML = bookings.map((booking) => `
+    <tr>
+      <td>
+        <strong>${booking.patientName}</strong><br />
+        <span class="small text-secondary">${formatDateTime(booking.bookingTime)}</span>
+      </td>
+      <td>${booking.destinationName}</td>
+      <td>${booking.ambulanceName}<br /><span class="small text-secondary">${booking.ambulanceNumber || '-'}</span></td>
+      <td>${booking.etaMinutes} menit</td>
+      <td><span class="${bookingBadgeClass(booking.status)}">${booking.status}</span></td>
+    </tr>
+  `).join('');
 }
 
-function renderEvents(events) {
-  elements.eventFeed.innerHTML = events
-    .map(
-      (item) => `
-        <div class="event-item">
-          <h4>${item.title}</h4>
-          <div class="event-meta">${item.type.toUpperCase()} · ${formatTime(item.timestamp)}</div>
-          <p>${item.detail}</p>
-        </div>
-      `
-    )
-    .join('');
-}
-
-function renderTables(ambulances, hospitals) {
-  elements.ambulanceTable.innerHTML = ambulances
-    .map(
-      (ambulance) => `
-        <tr>
-          <td>
-            <strong>${ambulance.name}</strong><br />
-            <span class="small text-secondary">${ambulance.id}</span>
-          </td>
-          <td>${ambulance.driver}</td>
-          <td><span class="${badgeClassForStatus(ambulance.status)}">${ambulance.status}</span></td>
-          <td>${ambulance.battery}%</td>
-          <td>${formatTime(ambulance.lastSeen)}</td>
-        </tr>
-      `
-    )
-    .join('');
-
-  elements.hospitalTable.innerHTML = hospitals
-    .map(
-      (hospital) => `
-        <tr>
-          <td>
-            <strong>${hospital.name}</strong><br />
-            <span class="small text-secondary">${hospital.phone}</span>
-          </td>
-          <td>${hospital.igdBedsAvailable}</td>
-          <td>${hospital.doctorsOnDuty}</td>
-          <td>${hospital.icuAvailable ? 'Ada' : 'Tidak ada'}</td>
-          <td><span class="${badgeClassForStatus(hospital.receivingPatients ? 'Menerima' : 'Penuh')}">${hospital.receivingPatients ? 'Menerima pasien' : 'Penuh'}</span></td>
-        </tr>
-      `
-    )
-    .join('');
-}
-
-function findBestDispatch(dashboardData) {
-  const ambulance = dashboardData.ambulances.find((item) => item.status === 'Menuju Pasien') || dashboardData.ambulances[0];
-  const hospital = dashboardData.hospitals.find((item) => item.receivingPatients) || dashboardData.hospitals[0];
-  const latestIncident = dashboardData.incidents[0];
-
-  elements.recommendedAmbulance.textContent = ambulance ? `${ambulance.name}` : '--';
-  elements.recommendedAmbulanceMeta.textContent = ambulance ? `${ambulance.driver} · ${ambulance.status}` : 'Menunggu data';
-  elements.recommendedHospital.textContent = hospital ? hospital.name : '--';
-  elements.recommendedHospitalMeta.textContent = hospital ? `${hospital.igdBedsAvailable} IGD beds available` : 'Menunggu data';
-  elements.recommendedEta.textContent = latestIncident ? `${latestIncident.responseTimeMinutes} min` : '--';
-  elements.recommendedRoute.textContent = latestIncident
-    ? `${latestIncident.area} → ${latestIncident.hospitalName}`
-    : 'Rute belum tersedia';
-}
-
-function updateStats(dashboardData) {
-  elements.statActiveCases.textContent = dashboardData.dispatchSummary?.activeCases ?? 0;
-  elements.statAverageResponse.textContent = `${dashboardData.analytics.averageResponse}m`;
-  elements.statHospitalsReceiving.textContent = dashboardData.hospitals.filter((item) => item.receivingPatients).length;
-  elements.statSuccessRate.textContent = `${dashboardData.analytics.successRate}%`;
-  elements.lastUpdated.textContent = `Updated ${formatTime(dashboardData.updatedAt)}`;
-}
-
-function syncTheme(nextTheme) {
-  document.documentElement.dataset.theme = nextTheme;
-  localStorage.setItem('theme', nextTheme);
-  document.body.classList.toggle('light-theme', nextTheme === 'light');
-  tileLayers.dark.remove();
-  tileLayers.light.remove();
-  (nextTheme === 'light' ? tileLayers.light : tileLayers.dark).addTo(map);
-  if (dashboard) {
-    renderAnalytics(dashboard.analytics);
+function renderTracking() {
+  const tracking = getCurrentTracking();
+  if (!tracking) {
+    elements.trackingCard.innerHTML = '<p>Belum ada pemesanan ambulans. Gunakan tombol <strong>Pesan Ambulans</strong> untuk memulai.</p>';
+    return;
   }
+
+  const steps = [
+    'Permintaan diterima',
+    'Ambulans sedang disiapkan',
+    'Ambulans menuju lokasi',
+    'Ambulans telah tiba',
+    'Pasien dalam penanganan'
+  ];
+
+  elements.trackingCard.innerHTML = `
+    <div class="tracking-summary">
+      <div>
+        <p class="summary-label">Fasilitas pengirim</p>
+        <h4>${tracking.destinationName}</h4>
+        <p>${tracking.destinationPhone || '-'}</p>
+      </div>
+      <div>
+        <p class="summary-label">Sopir dan unit</p>
+        <h4>${tracking.driverName}</h4>
+        <p>${tracking.ambulanceName} · ${tracking.ambulanceNumber || '-'}</p>
+      </div>
+      <div>
+        <p class="summary-label">ETA dan jarak</p>
+        <h4>${tracking.etaMinutes} menit</h4>
+        <p>${tracking.distanceKm?.toFixed ? tracking.distanceKm.toFixed(2) : tracking.distanceKm} km</p>
+      </div>
+    </div>
+    <div class="tracking-status mt-4">
+      <p class="summary-label">Status perjalanan</p>
+      <div class="status-steps">
+        ${steps.map((step) => `<span class="status-step ${tracking.statusHistory?.includes(step) ? 'is-active' : ''}">${step}</span>`).join('')}
+      </div>
+      <div class="tracking-meta mt-3">
+        <span><strong>Lokasi kejadian:</strong> ${tracking.pickupLocation}</span>
+        <span><strong>Kondisi:</strong> ${tracking.condition}</span>
+        <span><strong>Catatan:</strong> ${tracking.note}</span>
+      </div>
+    </div>
+  `;
+}
+
+function renderAdminTables() {
+  const ambulances = state.dashboard?.ambulances || [];
+  const facilities = [
+    ...(state.dashboard?.hospitals || []).map((item) => ({ ...item, jenis: 'Rumah Sakit' })),
+    ...(state.dashboard?.clinics || []).map((item) => ({ ...item, jenis: 'Klinik' }))
+  ];
+
+  elements.ambulanceAdminTable.innerHTML = ambulances.map((ambulance) => `
+    <tr>
+      <td><strong>${ambulance.name}</strong><br /><span class="small text-secondary">${ambulance.number || '-'}</span></td>
+      <td>${ambulance.driver}</td>
+      <td><span class="${bookingBadgeClass(ambulance.status)}">${ambulance.status}</span></td>
+      <td><button class="btn btn-sm btn-outline-light" data-ambulance-toggle="${ambulance.id}">Ubah Status</button></td>
+    </tr>
+  `).join('');
+
+  elements.facilityAdminTable.innerHTML = facilities.map((facility) => `
+    <tr>
+      <td><strong>${facility.name}</strong><br /><span class="small text-secondary">${facility.address}</span></td>
+      <td>${facility.jenis}</td>
+      <td>${facility.ambulancesAvailable}</td>
+      <td><span class="${facilityBadgeClass(facility)}">${facility.active ? 'Aktif' : 'Nonaktif'}</span></td>
+      <td class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-sm btn-outline-light" data-facility-toggle="${facility.id}">Aktif / Nonaktif</button>
+        <button class="btn btn-sm btn-outline-light" data-facility-plus="${facility.id}">+1 Ambulans</button>
+        <button class="btn btn-sm btn-outline-light" data-facility-minus="${facility.id}">-1 Ambulans</button>
+      </td>
+    </tr>
+  `).join('');
+
+  document.querySelectorAll('[data-ambulance-toggle]').forEach((button) => {
+    button.addEventListener('click', () => toggleAmbulanceStatus(button.dataset.ambulanceToggle));
+  });
+
+  document.querySelectorAll('[data-facility-toggle]').forEach((button) => {
+    button.addEventListener('click', () => toggleFacilityActive(button.dataset.facilityToggle));
+  });
+
+  document.querySelectorAll('[data-facility-plus]').forEach((button) => {
+    button.addEventListener('click', () => adjustFacilityAmbulances(button.dataset.facilityPlus, 1));
+  });
+
+  document.querySelectorAll('[data-facility-minus]').forEach((button) => {
+    button.addEventListener('click', () => adjustFacilityAmbulances(button.dataset.facilityMinus, -1));
+  });
+}
+
+function renderDashboard() {
+  if (!state.dashboard) return;
+  renderStats();
+  renderFacilities();
+  renderMap();
+  renderEvents();
+  renderCharts();
+  renderBookings();
+  renderTracking();
+  renderAdminTables();
+}
+
+function openBookingModal(facility) {
+  state.selectedFacility = facility;
+  elements.bookingTargetLabel.textContent = `${facility.name} · ${facility.phone}`;
+  elements.bookingForm.tujuanId.value = facility.id;
+  if (state.userLocation) {
+    elements.bookingForm.lokasiKejadian.value = `Lokasi sekitar ${state.userLocation.lat.toFixed(4)}, ${state.userLocation.lng.toFixed(4)}`;
+  }
+  bookingModal.show();
+}
+
+function getCurrentLocation() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve({ lat: -6.99, lng: 110.42 });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        });
+      },
+      () => resolve({ lat: -6.99, lng: 110.42 }),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 15000 }
+    );
+  });
+}
+
+async function setUserLocation(location) {
+  state.userLocation = location;
+  await fetch('/api/lokasi-saya', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ location })
+  });
 }
 
 async function loadDashboard() {
-  const response = await fetch('/api/dashboard');
-  dashboard = await response.json();
-  updateStats(dashboard);
-  renderTables(dashboard.ambulances, dashboard.hospitals);
-  renderTraffic(dashboard.traffic);
-  renderEvents(dashboard.events);
-  findBestDispatch(dashboard);
-  drawMap(dashboard);
-  renderAnalytics(dashboard.analytics);
+  const [dashboardResponse, fasilitasResponse] = await Promise.all([
+    fetch('/api/dashboard'),
+    fetch('/api/fasilitas')
+  ]);
+
+  state.dashboard = await dashboardResponse.json();
+  state.facilities = await fasilitasResponse.json();
+
+  if (!state.userLocation) {
+    state.userLocation = state.dashboard.userLocation;
+  }
+
+  renderDashboard();
 }
 
-async function createDemoDispatch() {
-  const payload = {
-    patient: {
-      name: 'Demo Patient',
-      age: 37,
-      condition: 'Shortness of breath and chest pain',
-      severity: 'Tinggi'
-    },
-    area: 'Cikini',
-    caseType: 'cardiac',
-    location: { lat: -6.1938, lng: 106.8449 }
-  };
+async function refreshAll() {
+  await loadDashboard();
+}
 
-  await fetch('/api/dispatch', {
+async function createBookingFromForm(event) {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const payload = Object.fromEntries(formData.entries());
+  payload.userLocation = state.userLocation || state.dashboard?.userLocation;
+
+  const response = await fetch('/api/pemesanan-ambulans', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload)
   });
-  await loadDashboard();
+
+  const result = await response.json();
+  if (!result.success) {
+    alert(result.message || 'Gagal memproses pemesanan ambulans');
+    return;
+  }
+
+  bookingModal.hide();
+  state.activeTrackingId = result.booking?.id || null;
+  await refreshAll();
+}
+
+async function addHospital(event) {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const payload = Object.fromEntries(formData.entries());
+  payload.ambulancesAvailable = Number(payload.ambulancesAvailable || 0);
+  payload.active = true;
+  payload.receivingPatients = true;
+  payload.location = state.userLocation || state.dashboard.userLocation;
+
+  await fetch('/api/admin/rumah-sakit', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  event.currentTarget.reset();
+  await refreshAll();
+}
+
+async function addClinic(event) {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const payload = Object.fromEntries(formData.entries());
+  payload.ambulancesAvailable = Number(payload.ambulancesAvailable || 0);
+  payload.active = true;
+  payload.receivingPatients = true;
+  payload.location = state.userLocation || state.dashboard.userLocation;
+
+  await fetch('/api/admin/klinik', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  event.currentTarget.reset();
+  await refreshAll();
+}
+
+async function addAmbulance(event) {
+  event.preventDefault();
+  const formData = new FormData(event.currentTarget);
+  const payload = Object.fromEntries(formData.entries());
+  payload.battery = 90;
+  payload.location = state.userLocation || state.dashboard.userLocation;
+  payload.target = state.userLocation || state.dashboard.userLocation;
+
+  await fetch('/api/admin/ambulans', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+
+  event.currentTarget.reset();
+  await refreshAll();
+}
+
+async function toggleAmbulanceStatus(id) {
+  const ambulance = state.dashboard.ambulances.find((item) => item.id === id);
+  if (!ambulance) return;
+
+  const nextStatus = ambulance.status === 'Offline' ? 'Tersedia' : ambulance.status === 'Tersedia' ? 'Ambulans sedang disiapkan' : 'Offline';
+  await fetch(`/api/ambulances/${id}/status`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: nextStatus })
+  });
+
+  await refreshAll();
+}
+
+async function toggleFacilityActive(id) {
+  const facility = findFacility(id);
+  if (!facility) return;
+  const isHospital = Boolean(state.dashboard.hospitals.find((item) => item.id === id));
+  const endpoint = isHospital ? `/api/hospitals/${id}/capacity` : `/api/clinics/${id}/capacity`;
+
+  await fetch(endpoint, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ active: !facility.active, receivingPatients: !facility.active })
+  });
+
+  await refreshAll();
+}
+
+async function adjustFacilityAmbulances(id, delta) {
+  const facility = findFacility(id);
+  if (!facility) return;
+  const isHospital = Boolean(state.dashboard.hospitals.find((item) => item.id === id));
+  const endpoint = isHospital ? `/api/hospitals/${id}/capacity` : `/api/clinics/${id}/capacity`;
+
+  await fetch(endpoint, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ambulancesAvailable: Math.max(0, (facility.ambulancesAvailable || 0) + delta) })
+  });
+
+  await refreshAll();
+}
+
+function initTheme() {
+  const storedTheme = localStorage.getItem('sigap-theme') || 'dark';
+  applyTheme(storedTheme);
+}
+
+function applyTheme(theme) {
+  document.documentElement.dataset.theme = theme === 'light' ? 'light' : 'dark';
+  localStorage.setItem('sigap-theme', theme);
+  elements.themeToggle.textContent = theme === 'light' ? 'Mode Terang' : 'Mode Gelap';
+  tileLayers.dark.remove();
+  tileLayers.light.remove();
+  (theme === 'light' ? tileLayers.light : tileLayers.dark).addTo(map);
+}
+
+async function detectLocation() {
+  const location = await getCurrentLocation();
+  await setUserLocation(location);
+  map.setView([location.lat, location.lng], 14);
+  await refreshAll();
 }
 
 socket.on('dashboard:update', (payload) => {
-  dashboard = payload;
-  updateStats(payload);
-  renderTables(payload.ambulances, payload.hospitals);
-  renderTraffic(payload.traffic);
-  renderEvents(payload.events);
-  findBestDispatch(payload);
-  drawMap(payload);
-  renderAnalytics(payload.analytics);
+  state.dashboard = payload;
+  if (!state.userLocation) {
+    state.userLocation = payload.userLocation;
+  }
+  state.facilities = {
+    hospitals: payload.hospitals,
+    clinics: payload.clinics
+  };
+  renderDashboard();
 });
 
-socket.on('dispatch:result', () => {
-  loadDashboard();
+socket.on('permintaan:hasil', () => {
+  refreshAll();
 });
 
-elements.dispatchDemoBtn.addEventListener('click', createDemoDispatch);
+socket.on('tracking:hasil', () => {
+  refreshAll();
+});
 
+elements.gpsBtn.addEventListener('click', detectLocation);
+elements.bukaFormBtn.addEventListener('click', () => {
+  const defaultFacility = state.facilities.hospitals[0] || state.facilities.clinics[0];
+  if (defaultFacility) {
+    openBookingModal(defaultFacility);
+  } else {
+    bookingModal.show();
+  }
+});
 elements.themeToggle.addEventListener('click', () => {
-  const nextTheme = isDarkTheme() ? 'light' : 'dark';
-  syncTheme(nextTheme);
-  elements.themeToggle.textContent = nextTheme === 'light' ? 'Light Mode' : 'Dark Mode';
+  const nextTheme = document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+  applyTheme(nextTheme);
+});
+elements.bookingForm.addEventListener('submit', createBookingFromForm);
+elements.formRumahSakit.addEventListener('submit', addHospital);
+elements.formKlinik.addEventListener('submit', addClinic);
+elements.formAmbulans.addEventListener('submit', addAmbulance);
+
+document.addEventListener('click', (event) => {
+  const selected = event.target.closest('[data-facility-book]');
+  if (selected) {
+    const facility = findFacility(selected.dataset.facilityBook);
+    if (facility) {
+      openBookingModal(facility);
+    }
+  }
 });
 
-const storedTheme = localStorage.getItem('theme') || 'dark';
-syncTheme(storedTheme);
-elements.themeToggle.textContent = storedTheme === 'light' ? 'Light Mode' : 'Dark Mode';
-
-loadDashboard().catch((error) => {
-  console.error(error);
-  elements.eventFeed.innerHTML = '<div class="event-item"><h4>Failed to load dashboard</h4><p>Check the backend server.</p></div>';
-});
+(async () => {
+  initTheme();
+  await detectLocation();
+  await refreshAll();
+})();

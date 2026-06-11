@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Emergency Command Center</title>
+    <title>SIGAP Ambulans Semarang</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
@@ -15,147 +15,130 @@
     <div class="dashboard-shell">
       <aside class="sidebar">
         <div class="brand-block">
-          <div class="brand-mark">EC</div>
+          <div class="brand-mark">SG</div>
           <div>
-            <p class="eyebrow">Emergency Command Center</p>
-            <h1>Ambulance Dispatch</h1>
+            <p class="eyebrow">Sistem Informasi Gawat Darurat</p>
+            <h1>SIGAP Ambulans Semarang</h1>
           </div>
         </div>
 
         <nav class="nav flex-column gap-2">
-          <a class="nav-link active" href="#overview">Overview</a>
-          <a class="nav-link" href="#dispatch">Dispatch</a>
-          <a class="nav-link" href="#map-section">Map</a>
-          <a class="nav-link" href="#analytics">Analytics</a>
+          <a class="nav-link active" href="#beranda">Beranda</a>
+          <a class="nav-link" href="#peta">Peta</a>
+          <a class="nav-link" href="#fasilitas">Fasilitas</a>
           <a class="nav-link" href="#tracking">Tracking</a>
-          <a class="nav-link" href="#hospitals">Hospitals</a>
+          <a class="nav-link" href="#riwayat">Riwayat</a>
+          <a class="nav-link" href="#admin">Admin</a>
         </nav>
 
         <div class="sidebar-card">
-          <p class="sidebar-card__label">Mode</p>
-          <button id="themeToggle" class="btn btn-outline-light w-100">Dark Mode</button>
+          <p class="sidebar-card__label">Mode Tampilan</p>
+          <button id="themeToggle" class="btn btn-outline-light w-100">Mode Gelap</button>
         </div>
 
         <div class="sidebar-card compact">
-          <p class="sidebar-card__label">System Status</p>
-          <div class="status-pill status-pill--live">Realtime Active</div>
+          <p class="sidebar-card__label">Status Sistem</p>
+          <div class="status-pill status-pill--live">Realtime Aktif</div>
           <p id="lastUpdated" class="sidebar-card__value">--</p>
         </div>
       </aside>
 
       <main class="content-area">
-        <header class="topbar" id="overview">
+        <header class="topbar" id="beranda">
           <div>
-            <p class="eyebrow">Command center</p>
-            <h2>Real-time ambulance, hospital, and routing operations</h2>
+            <p class="eyebrow">Pelayanan ambulans Kota Semarang</p>
+            <h2>Cari fasilitas kesehatan terdekat, pesan ambulans, dan pantau pergerakannya secara langsung</h2>
           </div>
-          <div class="topbar-actions">
-            <button id="dispatchDemoBtn" class="btn btn-danger">Create Demo Dispatch</button>
+          <div class="topbar-actions d-flex gap-2 flex-wrap">
+            <button id="gpsBtn" class="btn btn-outline-light">Deteksi Lokasi Saya</button>
+            <button id="bukaFormBtn" class="btn btn-danger">Pesan Ambulans</button>
           </div>
         </header>
 
-        <section class="stats-grid" id="quickStats">
+        <section class="stats-grid" id="statistik">
           <article class="metric-card metric-card--primary">
-            <p class="metric-label">Active Cases</p>
+            <p class="metric-label">Pemesanan Aktif</p>
             <h3 id="statActiveCases">0</h3>
-            <span>Monitoring live incidents</span>
+            <span>Menunggu, menuju lokasi, atau dalam penanganan</span>
           </article>
           <article class="metric-card">
-            <p class="metric-label">Average Response</p>
-            <h3 id="statAverageResponse">0m</h3>
-            <span>Target under 12 minutes</span>
+            <p class="metric-label">ETA Rata-rata</p>
+            <h3 id="statAverageEta">0m</h3>
+            <span>Estimasi perjalanan ambulans</span>
           </article>
           <article class="metric-card">
-            <p class="metric-label">Hospitals Receiving</p>
-            <h3 id="statHospitalsReceiving">0</h3>
-            <span>Capacity synced with IGD</span>
+            <p class="metric-label">Fasilitas Aktif</p>
+            <h3 id="statFacilities">0</h3>
+            <span>Rumah sakit dan klinik siap menerima pasien</span>
           </article>
           <article class="metric-card">
-            <p class="metric-label">Target Success</p>
+            <p class="metric-label">Tingkat Keberhasilan</p>
             <h3 id="statSuccessRate">0%</h3>
-            <span>Operational performance</span>
+            <span>Pesanan yang diproses di bawah target</span>
           </article>
         </section>
 
-        <section class="hero-grid" id="dispatch">
-          <div class="panel panel--wide">
-            <div class="panel-header">
-              <div>
-                <p class="eyebrow">Smart dispatch</p>
-                <h3>Recommended ambulance and hospital</h3>
-              </div>
-              <div class="panel-badge">Live ETA</div>
-            </div>
-            <div class="dispatch-summary" id="dispatchSummary">
-              <div>
-                <p class="summary-label">Ambulance terbaik</p>
-                <h4 id="recommendedAmbulance">--</h4>
-                <p id="recommendedAmbulanceMeta">Menunggu data</p>
-              </div>
-              <div>
-                <p class="summary-label">Rumah sakit tujuan</p>
-                <h4 id="recommendedHospital">--</h4>
-                <p id="recommendedHospitalMeta">Menunggu data</p>
-              </div>
-              <div>
-                <p class="summary-label">Rute dan ETA</p>
-                <h4 id="recommendedEta">--</h4>
-                <p id="recommendedRoute">Rute belum tersedia</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="panel panel--compact">
-            <div class="panel-header">
-              <div>
-                <p class="eyebrow">Traffic</p>
-                <h3>Live road conditions</h3>
-              </div>
-            </div>
-            <div id="trafficList" class="traffic-list"></div>
-          </div>
-        </section>
-
-        <section class="map-layout" id="map-section">
+        <section class="hero-grid" id="peta">
           <div class="panel panel--map">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">Map monitoring</p>
-                <h3>Realtime ambulance tracking</h3>
+                <p class="eyebrow">Peta Interaktif</p>
+                <h3>Lokasi pengguna, fasilitas, ambulans, dan rute perjalanan</h3>
               </div>
-              <div class="panel-badge panel-badge--soft">Leaflet</div>
+              <div class="panel-badge panel-badge--soft">Leaflet + OSM</div>
             </div>
             <div id="map"></div>
           </div>
           <div class="panel panel--feed">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">Live feed</p>
-                <h3>Operational events</h3>
+                <p class="eyebrow">Notifikasi</p>
+                <h3>Aktivitas terbaru sistem</h3>
               </div>
             </div>
             <div id="eventFeed" class="event-feed"></div>
           </div>
         </section>
 
-        <section class="analytics-grid" id="analytics">
+        <section class="analytics-grid" id="analitik">
           <div class="panel">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">Analytics</p>
-                <h3>Service performance</h3>
+                <p class="eyebrow">Analitik</p>
+                <h3>Tren pemesanan dan target layanan</h3>
               </div>
             </div>
-            <canvas id="responseChart" height="160"></canvas>
+            <canvas id="bookingChart" height="160"></canvas>
           </div>
           <div class="panel">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">Analytics</p>
-                <h3>Case volume and target success</h3>
+                <p class="eyebrow">Analitik</p>
+                <h3>ETA dan performa respons</h3>
               </div>
             </div>
-            <canvas id="volumeChart" height="160"></canvas>
+            <canvas id="etaChart" height="160"></canvas>
+          </div>
+        </section>
+
+        <section class="table-grid" id="fasilitas">
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Rumah Sakit</p>
+                <h3>Kartu rumah sakit terdekat</h3>
+              </div>
+            </div>
+            <div id="hospitalCards" class="facility-grid"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Klinik</p>
+                <h3>Kartu klinik terdekat</h3>
+              </div>
+            </div>
+            <div id="clinicCards" class="facility-grid"></div>
           </div>
         </section>
 
@@ -163,45 +146,113 @@
           <div class="panel">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">Fleet</p>
-                <h3>Ambulance table</h3>
+                <p class="eyebrow">Tracking Ambulans</p>
+                <h3>Status perjalanan realtime</h3>
+              </div>
+            </div>
+            <div id="trackingCard" class="tracking-card"></div>
+          </div>
+          <div class="panel" id="riwayat">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Riwayat</p>
+                <h3>Daftar pemesanan ambulans</h3>
               </div>
             </div>
             <div class="table-responsive">
               <table class="table table-dark table-borderless align-middle mb-0">
                 <thead>
                   <tr>
-                    <th>Unit</th>
-                    <th>Driver</th>
+                    <th>Nama</th>
+                    <th>Tujuan</th>
+                    <th>Ambulans</th>
+                    <th>ETA</th>
                     <th>Status</th>
-                    <th>Battery</th>
-                    <th>Last seen</th>
                   </tr>
                 </thead>
-                <tbody id="ambulanceTable"></tbody>
+                <tbody id="bookingTable"></tbody>
               </table>
             </div>
           </div>
+        </section>
 
-          <div class="panel" id="hospitals">
+        <section class="table-grid" id="admin">
+          <div class="panel">
             <div class="panel-header">
               <div>
-                <p class="eyebrow">Hospitals</p>
-                <h3>IGD availability table</h3>
+                <p class="eyebrow">Admin</p>
+                <h3>Tambah rumah sakit / klinik / ambulans</h3>
               </div>
+            </div>
+            <div class="admin-form-grid">
+              <form id="formRumahSakit" class="admin-form">
+                <h4>Tambah Rumah Sakit</h4>
+                <input class="form-control" name="name" placeholder="Nama rumah sakit" required />
+                <input class="form-control" name="address" placeholder="Alamat lengkap" required />
+                <input class="form-control" name="phone" placeholder="Nomor telepon" required />
+                <input class="form-control" name="ambulancesAvailable" type="number" min="0" placeholder="Jumlah ambulans tersedia" />
+                <button class="btn btn-danger w-100" type="submit">Simpan Rumah Sakit</button>
+              </form>
+
+              <form id="formKlinik" class="admin-form">
+                <h4>Tambah Klinik</h4>
+                <input class="form-control" name="name" placeholder="Nama klinik" required />
+                <input class="form-control" name="address" placeholder="Alamat lengkap" required />
+                <input class="form-control" name="phone" placeholder="Nomor telepon" required />
+                <input class="form-control" name="ambulancesAvailable" type="number" min="0" placeholder="Jumlah ambulans tersedia" />
+                <button class="btn btn-danger w-100" type="submit">Simpan Klinik</button>
+              </form>
+
+              <form id="formAmbulans" class="admin-form">
+                <h4>Tambah Ambulans</h4>
+                <input class="form-control" name="name" placeholder="Nama ambulans" required />
+                <input class="form-control" name="driver" placeholder="Nama sopir" required />
+                <input class="form-control" name="number" placeholder="Nomor ambulans" required />
+                <select class="form-select" name="status">
+                  <option value="Tersedia">Tersedia</option>
+                  <option value="Siaga di RS">Siaga di RS</option>
+                  <option value="Ambulans sedang disiapkan">Ambulans sedang disiapkan</option>
+                  <option value="Ambulans menuju lokasi">Ambulans menuju lokasi</option>
+                  <option value="Mengantar Pasien">Mengantar Pasien</option>
+                  <option value="Offline">Offline</option>
+                </select>
+                <button class="btn btn-danger w-100" type="submit">Simpan Ambulans</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <div>
+                <p class="eyebrow">Admin</p>
+                <h3>Kelola armada dan fasilitas aktif</h3>
+              </div>
+            </div>
+            <div class="table-responsive mb-4">
+              <table class="table table-dark table-borderless align-middle mb-0">
+                <thead>
+                  <tr>
+                    <th>Ambulans</th>
+                    <th>Sopir</th>
+                    <th>Status</th>
+                    <th>Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="ambulanceAdminTable"></tbody>
+              </table>
             </div>
             <div class="table-responsive">
               <table class="table table-dark table-borderless align-middle mb-0">
                 <thead>
                   <tr>
-                    <th>Hospital</th>
-                    <th>IGD Beds</th>
-                    <th>Doctors</th>
-                    <th>ICU</th>
+                    <th>Fasilitas</th>
+                    <th>Jenis</th>
+                    <th>Ambulans</th>
                     <th>Status</th>
+                    <th>Aksi</th>
                   </tr>
                 </thead>
-                <tbody id="hospitalTable"></tbody>
+                <tbody id="facilityAdminTable"></tbody>
               </table>
             </div>
           </div>
@@ -209,9 +260,55 @@
       </main>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
+    <div class="modal fade" id="bookingModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content bg-dark text-light border border-secondary">
+          <div class="modal-header border-secondary">
+            <div>
+              <p class="eyebrow">Formulir Pemesanan</p>
+              <h5 class="modal-title mb-0">Pesan ambulans darurat</h5>
+            </div>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Tutup"></button>
+          </div>
+          <form id="bookingForm">
+            <div class="modal-body">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Nama lengkap</label>
+                  <input class="form-control" name="namaLengkap" required />
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Nomor telepon</label>
+                  <input class="form-control" name="nomorTelepon" required />
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Lokasi kejadian</label>
+                  <input class="form-control" name="lokasiKejadian" required />
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Keluhan / kondisi darurat</label>
+                  <textarea class="form-control" name="keluhan" rows="3" required></textarea>
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Catatan tambahan</label>
+                  <textarea class="form-control" name="catatanTambahan" rows="2"></textarea>
+                </div>
+                <input type="hidden" name="tujuanId" />
+              </div>
+            </div>
+            <div class="modal-footer border-secondary">
+              <span id="bookingTargetLabel" class="me-auto small text-secondary">Belum memilih fasilitas</span>
+              <button class="btn btn-danger" type="submit">Kirim Permintaan Ambulans</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>

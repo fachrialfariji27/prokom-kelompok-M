@@ -1,47 +1,69 @@
-CREATE TABLE ambulances (
-  id VARCHAR(20) PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  driver_name VARCHAR(100) NOT NULL,
-  status VARCHAR(40) NOT NULL,
-  latitude DECIMAL(10, 6) NOT NULL,
-  longitude DECIMAL(10, 6) NOT NULL,
-  battery INTEGER NOT NULL,
-  last_seen TIMESTAMP NOT NULL,
-  current_assignment VARCHAR(30)
-);
-
 CREATE TABLE hospitals (
-  id VARCHAR(20) PRIMARY KEY,
-  name VARCHAR(120) NOT NULL,
+  id VARCHAR(30) PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  address TEXT NOT NULL,
+  phone VARCHAR(30) NOT NULL,
   latitude DECIMAL(10, 6) NOT NULL,
   longitude DECIMAL(10, 6) NOT NULL,
-  phone VARCHAR(30) NOT NULL,
-  igd_beds_available INTEGER NOT NULL,
-  doctors_on_duty INTEGER NOT NULL,
-  icu_available BOOLEAN NOT NULL,
-  total_beds INTEGER NOT NULL,
-  receiving_patients BOOLEAN NOT NULL
+  ambulances_available INT NOT NULL DEFAULT 0,
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  receiving_patients TINYINT(1) NOT NULL DEFAULT 1,
+  facility_type VARCHAR(40) NOT NULL DEFAULT 'Rumah Sakit'
 );
 
-CREATE TABLE incidents (
+CREATE TABLE clinics (
   id VARCHAR(30) PRIMARY KEY,
-  created_at TIMESTAMP NOT NULL,
-  area VARCHAR(100) NOT NULL,
-  case_type VARCHAR(40) NOT NULL,
-  patient_name VARCHAR(120) NOT NULL,
-  ambulance_id VARCHAR(20) NOT NULL,
-  hospital_id VARCHAR(20) NOT NULL,
-  response_time_minutes INTEGER NOT NULL,
-  met_target BOOLEAN NOT NULL,
-  FOREIGN KEY (ambulance_id) REFERENCES ambulances(id),
-  FOREIGN KEY (hospital_id) REFERENCES hospitals(id)
+  name VARCHAR(150) NOT NULL,
+  address TEXT NOT NULL,
+  phone VARCHAR(30) NOT NULL,
+  latitude DECIMAL(10, 6) NOT NULL,
+  longitude DECIMAL(10, 6) NOT NULL,
+  ambulances_available INT NOT NULL DEFAULT 0,
+  active TINYINT(1) NOT NULL DEFAULT 1,
+  receiving_patients TINYINT(1) NOT NULL DEFAULT 1,
+  facility_type VARCHAR(40) NOT NULL DEFAULT 'Klinik'
+);
+
+CREATE TABLE ambulances (
+  id VARCHAR(30) PRIMARY KEY,
+  name VARCHAR(150) NOT NULL,
+  driver VARCHAR(150) NOT NULL,
+  number VARCHAR(40) NOT NULL,
+  status VARCHAR(60) NOT NULL,
+  latitude DECIMAL(10, 6) NOT NULL,
+  longitude DECIMAL(10, 6) NOT NULL,
+  battery INT NOT NULL DEFAULT 100,
+  last_seen DATETIME NOT NULL,
+  assignment_id VARCHAR(30)
+);
+
+CREATE TABLE bookings (
+  id VARCHAR(30) PRIMARY KEY,
+  patient_name VARCHAR(150) NOT NULL,
+  phone VARCHAR(30) NOT NULL,
+  booking_time DATETIME NOT NULL,
+  destination_name VARCHAR(150) NOT NULL,
+  destination_id VARCHAR(30) NOT NULL,
+  ambulance_name VARCHAR(150) NOT NULL,
+  ambulance_number VARCHAR(40) NOT NULL,
+  driver_name VARCHAR(150) NOT NULL,
+  eta_minutes INT NOT NULL,
+  duration_minutes INT NOT NULL,
+  status VARCHAR(80) NOT NULL,
+  pickup_location TEXT NOT NULL,
+  condition_text TEXT NOT NULL,
+  note_text TEXT,
+  latitude DECIMAL(10, 6) NOT NULL,
+  longitude DECIMAL(10, 6) NOT NULL,
+  facility_type VARCHAR(40) NOT NULL,
+  completed_at DATETIME NULL
 );
 
 CREATE TABLE tracking_events (
-  id SERIAL PRIMARY KEY,
-  incident_id VARCHAR(30) NOT NULL,
-  event_type VARCHAR(40) NOT NULL,
-  event_time TIMESTAMP NOT NULL,
-  details TEXT,
-  FOREIGN KEY (incident_id) REFERENCES incidents(id)
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  booking_id VARCHAR(30) NOT NULL,
+  status VARCHAR(80) NOT NULL,
+  status_time DATETIME NOT NULL,
+  note TEXT,
+  FOREIGN KEY (booking_id) REFERENCES bookings(id)
 );

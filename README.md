@@ -1,19 +1,21 @@
-# prokom-kelompok-M
+# SIGAP Ambulans Semarang
 
-Aplikasi dashboard command center darurat untuk dispatch ambulans, monitoring rumah sakit, smart routing, tracking perjalanan, dan analitik operasional.
+Aplikasi web berbasis peta untuk mencari fasilitas kesehatan terdekat di Kota Semarang, memesan ambulans darurat, dan memantau pergerakan ambulans secara realtime.
 
-## Stack
-- Frontend: HTML5, CSS3, JavaScript, Bootstrap 5, Leaflet, Chart.js
-- Backend: Node.js, Express, Socket.io
-- Database: SQL schema dan seed untuk PostgreSQL/MySQL-style relational setup
-- Realtime: Socket.io
+## Teknologi
+- Frontend: HTML, CSS, JavaScript, Bootstrap 5
+- Peta: Leaflet.js + OpenStreetMap
+- Backend: Node.js + Express + Socket.io
+- Database: MySQL schema dan seed tersedia di folder `sql/`
 
-## Fitur
-- Dashboard monitoring realtime ambulans dan rumah sakit
-- Dispatch ambulans otomatis berdasarkan lokasi dan ketersediaan
-- Smart routing berbasis data lalu lintas simulasi realtime
-- Tracking perjalanan dan event operasional
-- Analitik performa layanan
+## Fitur Utama
+- Deteksi lokasi pengguna via GPS
+- Peta interaktif untuk rumah sakit, klinik, ambulans, dan rute perjalanan
+- Pencarian fasilitas terdekat berdasarkan jarak dan ketersediaan ambulans
+- Form pemesanan ambulans dengan Bahasa Indonesia
+- Tracking ambulans realtime dengan simulasi GPS
+- Dashboard admin untuk tambah dan ubah data rumah sakit, klinik, dan ambulans
+- Riwayat pemesanan ambulans
 - Dark mode dan tampilan responsif mobile/desktop
 
 ## Struktur Folder
@@ -34,7 +36,7 @@ Aplikasi dashboard command center darurat untuk dispatch ambulans, monitoring ru
 └── README.md
 ```
 
-## Menjalankan Aplikasi
+## Cara Menjalankan
 1. Install dependensi:
 	```bash
 	npm install
@@ -43,7 +45,7 @@ Aplikasi dashboard command center darurat untuk dispatch ambulans, monitoring ru
 	```bash
 	npm start
 	```
-3. Buka:
+3. Buka aplikasi:
 	```text
 	http://localhost:3000
 	```
@@ -51,20 +53,30 @@ Aplikasi dashboard command center darurat untuk dispatch ambulans, monitoring ru
 ## Endpoint API
 - `GET /api/health`
 - `GET /api/dashboard`
-- `GET /api/ambulances`
-- `GET /api/hospitals`
-- `GET /api/incidents`
-- `GET /api/analytics`
-- `POST /api/dispatch`
-- `POST /api/hospitals/:id/capacity`
-- `POST /api/ambulances/:id/status`
+- `GET /api/fasilitas`
+- `GET /api/lokasi-saya`
+- `POST /api/lokasi-saya`
+- `GET /api/riwayat-pemesanan`
+- `GET /api/tracking/:id`
+- `POST /api/pemesanan-ambulans`
+- `POST /api/admin/rumah-sakit`
+- `POST /api/admin/klinik`
+- `POST /api/admin/ambulans`
+- `PATCH /api/hospitals/:id/capacity`
+- `PATCH /api/clinics/:id/capacity`
+- `PATCH /api/ambulances/:id/status`
+
+## Database
+Gunakan file berikut untuk membuat database MySQL:
+- `sql/schema.sql`
+- `sql/seed.sql`
 
 ## Data Dummy
-- 5 ambulans dummy
-- 5 rumah sakit dummy
-- riwayat insiden dan event operasional dummy
+- Rumah sakit Kota Semarang
+- Klinik Kota Semarang
+- Ambulans dummy Semarang
+- Riwayat pemesanan ambulans dummy
 
-## Catatan Implementasi
-- Aplikasi berjalan tanpa database eksternal agar langsung bisa dicoba.
-- File SQL disediakan sebagai dasar integrasi PostgreSQL/MySQL bila ingin dipindahkan ke database server.
-- Peta menggunakan Leaflet dengan tile OSM/CARTO dan update realtime via Socket.io.
+## Catatan
+- Aplikasi ini memakai data simulasi realtime agar bisa langsung dijalankan tanpa konfigurasi tambahan.
+- Jika ingin dihubungkan ke MySQL, gunakan skema dan seed di folder `sql/` sebagai dasar integrasi.
