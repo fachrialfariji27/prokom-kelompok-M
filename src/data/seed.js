@@ -25,6 +25,13 @@ function createAmbulanceTrack(id, name, driver, number, origin, destination, sta
 function baseState() {
   return {
     userLocation: defaultUserLocation,
+    traffic: [
+      { id: 'TR-001', name: 'Jl. Pandanaran', congestion: 1.1, baseSpeed: 42, speedKmh: 38 },
+      { id: 'TR-002', name: 'Jl. Pahlawan', congestion: 1.3, baseSpeed: 45, speedKmh: 34 },
+      { id: 'TR-003', name: 'Jl. Dr. Sutomo', congestion: 1.0, baseSpeed: 40, speedKmh: 40 },
+      { id: 'TR-004', name: 'Jl. Siliwangi', congestion: 1.2, baseSpeed: 44, speedKmh: 36 },
+      { id: 'TR-005', name: 'Jl. Raya Kaligawe', congestion: 1.4, baseSpeed: 38, speedKmh: 27 }
+    ],
     hospitals: [
       {
         id: 'RS-SMG-001',

@@ -658,6 +658,25 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 
-server.listen(PORT, () => {
-  console.log(`SIGAP Ambulans Semarang running on http://localhost:${PORT}`);
+let activePort = PORT;
+
+function startListening() {
+  server.listen(activePort);
+}
+
+server.on('listening', () => {
+  console.log(`SIGAP Ambulans Semarang running on http://localhost:${activePort}`);
 });
+
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    activePort += 1;
+    console.warn(`Port ${activePort - 1} sedang dipakai, mencoba port ${activePort}`);
+    startListening();
+    return;
+  }
+
+  throw error;
+});
+
+startListening();
